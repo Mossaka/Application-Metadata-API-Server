@@ -90,13 +90,24 @@ func get_metadata(c *gin.Context) {
 		if license != "" && metadata.License != license {
 			continue
 		}
+		found_name := false
+		found_email := false
 		for _, maintainer := range metadata.Maintainers {
-			if maintainer_name != "" && maintainer.Name != maintainer_name {
-				continue
+			if maintainer_name != "" && maintainer.Name == maintainer_name {
+				found_name = true
 			}
-			if maintainer_email != "" && maintainer.Email != maintainer_email {
-				continue
+			if maintainer_email != "" && maintainer.Email == maintainer_email {
+				found_email = true
 			}
+			if found_name && found_email {
+				break
+			}
+		}
+		if maintainer_name != "" && !found_name {
+			continue
+		}
+		if maintainer_email != "" && !found_email {
+			continue
 		}
 		metadata_list_filtered = append(metadata_list_filtered, metadata)
 	}
@@ -118,10 +129,14 @@ func post_metadata(c *gin.Context) {
 	c.YAML(http.StatusOK, new_metadata)
 }
 
-func main() {
+func setupServer() *gin.Engine {
 	router := gin.Default()
 	router.GET("/api/metadata", get_metadata)
 	router.POST("/api/metadata", post_metadata)
 
-	router.Run("localhost:8080")
+	return router
+}
+
+func main() {
+	setupServer().Run("localhost:8080")
 }
