@@ -1,9 +1,8 @@
 # TODO items for improving the API server
 - [x] Add versioning to the API server
 - [x] Add persister and handles concurrent POST requests
-- [ ] Propose a primary key and make PUT reqeusts
-- [ ] Add length restriction for fields
-- [ ] Check content type is correct
+- [x] Propose a primary key and make PUT reqeusts
+- [x] Add length restriction for fields
 - [ ] Support for pagination
 - [ ] Support for caching
 - [ ] Support for auth
