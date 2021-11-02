@@ -1,0 +1,15 @@
+# TODO items for improving the API server
+- [x] Add versioning to the API server
+- [ ] Propose a primary key and make PUT reqeusts
+- [ ] Add length restriction for fields
+- [ ] Check content type is correct
+- [ ] Support for pagination
+- [ ] Support for caching
+- [ ] Support for auth
+- [ ] Support for rate limiter
+- [ ] Support for search
+- [ ] Support for sorting
+- [ ] Implementating CORS
+- [ ] Logging
+- [ ] Monitoring
+- [ ] API docs

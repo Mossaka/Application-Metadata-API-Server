@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Mossaka/Application-Metadata-API-Server/models"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
@@ -15,7 +16,7 @@ func TestGetMetadata(t *testing.T) {
 	ts := httptest.NewServer(setupServer())
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/api/metadata")
+	resp, err := http.Get(ts.URL + "/v1/metadata")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +30,7 @@ func TestGetMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m := []metadata{}
+	m := []models.Metadata{}
 	err = yaml.Unmarshal([]byte(b), &m)
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +45,7 @@ func TestGetMetadataFilter(t *testing.T) {
 	ts := httptest.NewServer(setupServer())
 	defer ts.Close()
 
-	urls := []string{"/api/metadata?title=Valid%20App%202", "/api/metadata?maintainer_email=secondmaintainer%40gmail.com"}
+	urls := []string{"/v1/metadata?title=Valid%20App%202", "/v1/metadata?maintainer_email=secondmaintainer%40gmail.com"}
 
 	for i, url := range urls {
 		resp, err := http.Get(ts.URL + url)
@@ -61,7 +62,7 @@ func TestGetMetadataFilter(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		m := []metadata{}
+		m := []models.Metadata{}
 		err = yaml.Unmarshal([]byte(b), &m)
 		if err != nil {
 			t.Fatal(err)
@@ -76,7 +77,7 @@ func TestPostMetadata(t *testing.T) {
 	ts := httptest.NewServer(setupServer())
 	defer ts.Close()
 
-	url := ts.URL + "/api/metadata"
+	url := ts.URL + "/v1/metadata"
 	payload := `title: Test App
 maintainers:
 - name: Test Maintainer
@@ -106,7 +107,7 @@ func TestPostInvalidMetadata(t *testing.T) {
 	ts := httptest.NewServer(setupServer())
 	defer ts.Close()
 
-	url := ts.URL + "/api/metadata"
+	url := ts.URL + "/v1/metadata"
 	payload := `title: App w/ Invalid maintainer email
 version: 1.0.1
 maintainers:
@@ -140,7 +141,7 @@ func TestPostInvalidMetadata2(t *testing.T) {
 	ts := httptest.NewServer(setupServer())
 	defer ts.Close()
 
-	url := ts.URL + "/api/metadata"
+	url := ts.URL + "/v1/metadata"
 	payload := `title: App w/ missing version
 maintainers:
 - name: first last

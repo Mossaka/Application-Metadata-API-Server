@@ -3,31 +3,17 @@ package main
 import (
 	"net/http"
 
+	"github.com/Mossaka/Application-Metadata-API-Server/models"
+
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator"
 )
 
-type maintainer struct {
-	Name  string `yaml:"name" validate:"required"`
-	Email string `yaml:"email" validate:"required,email"`
-}
-
-type metadata struct {
-	Title       string       `yaml:"title" validate:"required"`
-	Version     string       `yaml:"version" validate:"required"`
-	Maintainers []maintainer `validate:"required,dive,required"`
-	Company     string       `yaml:"company" validate:"required"`
-	Website     string       `yaml:"website" validate:"required,url"`
-	Source      string       `yaml:"source" validate:"required,url"`
-	License     string       `yaml:"license" validate:"required"`
-	Description string       `yaml:"description" validate:"required"`
-}
-
-var metadata_list = []metadata{
+var metadata_list = []models.Metadata{
 	{
 		Title:   "Valid App 2",
 		Version: "1.0.1",
-		Maintainers: []maintainer{
+		Maintainers: []models.Maintainer{
 			{
 				Name:  "AppTwo Maintainer",
 				Email: "apptwo@hotmail.com",
@@ -42,7 +28,7 @@ var metadata_list = []metadata{
 	{
 		Title:   "Valid App 1",
 		Version: "0.0.1",
-		Maintainers: []maintainer{
+		Maintainers: []models.Maintainer{
 			{
 				Name:  "firstmaintainer app1",
 				Email: "apptwo@hotmail.com",
@@ -70,7 +56,7 @@ func get_metadata(c *gin.Context) {
 	maintainer_name := c.Query("maintainer_name")
 	maintainer_email := c.Query("maintainer_email")
 
-	var metadata_list_filtered []metadata
+	var metadata_list_filtered []models.Metadata
 	for _, metadata := range metadata_list {
 		if title != "" && metadata.Title != title {
 			continue
@@ -115,7 +101,7 @@ func get_metadata(c *gin.Context) {
 }
 
 func post_metadata(c *gin.Context) {
-	var new_metadata metadata
+	var new_metadata models.Metadata
 	if err := c.BindYAML(&new_metadata); err != nil {
 		c.YAML(http.StatusBadRequest, gin.H{"UserError": err.Error()})
 		return
@@ -131,8 +117,8 @@ func post_metadata(c *gin.Context) {
 
 func setupServer() *gin.Engine {
 	router := gin.Default()
-	router.GET("/api/metadata", get_metadata)
-	router.POST("/api/metadata", post_metadata)
+	router.GET("/v1/metadata", get_metadata)
+	router.POST("/v1/metadata", post_metadata)
 
 	return router
 }
