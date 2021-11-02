@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Mossaka/Application-Metadata-API-Server/models"
@@ -47,7 +49,7 @@ func TestGetMetadataFilter(t *testing.T) {
 
 	urls := []string{"/v1/metadata?title=Valid%20App%202", "/v1/metadata?maintainer_email=secondmaintainer%40gmail.com"}
 
-	for i, url := range urls {
+	for _, url := range urls {
 		resp, err := http.Get(ts.URL + url)
 		if err != nil {
 			t.Fatal(err)
@@ -69,7 +71,13 @@ func TestGetMetadataFilter(t *testing.T) {
 		}
 
 		assert.Equal(t, len(m), 1)
-		assert.Equal(t, m[0], metadata_list[i])
+		raw_metadata := db.GetAll()[m[0].Title+m[0].Version]
+		var metadata models.Metadata
+		err = yaml.Unmarshal([]byte(raw_metadata), &metadata)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, m[0], metadata)
 	}
 }
 
@@ -99,8 +107,14 @@ license: MIT`
 		t.Errorf("Status code is not 200. Status code: %d", resp.StatusCode)
 	}
 
-	assert.Equal(t, len(metadata_list), 3)
-	assert.Equal(t, metadata_list[2].Maintainers[0].Name, "Test Maintainer")
+	assert.Equal(t, len(db.GetAll()), 3)
+	raw_metadata := db.GetAll()["Test App1.0.0"]
+	var metadata models.Metadata
+	err = yaml.Unmarshal([]byte(raw_metadata), &metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, metadata.Maintainers[0].Name, "Test Maintainer")
 }
 
 func TestPostInvalidMetadata(t *testing.T) {
@@ -170,4 +184,34 @@ description: |
 	}
 
 	assert.Contains(t, string(b), "Field validation for ''Version'' failed")
+}
+
+func TestConcurrentPost(t *testing.T) {
+	var wg sync.WaitGroup
+	ts := httptest.NewServer(setupServer())
+	defer ts.Close()
+
+	url := ts.URL + "/v1/metadata"
+	for i := 0; i < 10; i++ {
+		payload := fmt.Sprintf(`title: Test App %d
+maintainers:
+  - name: Test Maintainer
+    email: testmaintain@google.com
+  - name: Test Maintainer 2
+    email: testmaintainer2@google.com
+company: Test Company
+website: http://test.com
+description: Test Description
+source: https://github.com/random/repo
+version: 1.0.0
+license: MIT`, i)
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, i int) {
+			defer wg.Done()
+			http.Post(url, "application/x-yaml", strings.NewReader(payload))
+			fmt.Printf("Done %d", i)
+		}(&wg, i)
+	}
+	wg.Wait()
+	assert.Equal(t, len(db.GetAll()), 12)
 }

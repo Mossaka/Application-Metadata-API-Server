@@ -4,10 +4,14 @@ import (
 	"net/http"
 
 	"github.com/Mossaka/Application-Metadata-API-Server/models"
+	"github.com/Mossaka/Application-Metadata-API-Server/persister"
+	"gopkg.in/yaml.v3"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator"
 )
+
+var db *persister.Persister
 
 var metadata_list = []models.Metadata{
 	{
@@ -57,7 +61,14 @@ func get_metadata(c *gin.Context) {
 	maintainer_email := c.Query("maintainer_email")
 
 	var metadata_list_filtered []models.Metadata
-	for _, metadata := range metadata_list {
+	all_metadata := db.GetAll()
+	for _, raw_metadata := range all_metadata {
+		var metadata models.Metadata
+		err := yaml.Unmarshal(raw_metadata, &metadata)
+		if err != nil {
+			c.YAML(http.StatusInternalServerError, gin.H{"InternalServerError": err.Error()})
+			return
+		}
 		if title != "" && metadata.Title != title {
 			continue
 		}
@@ -111,12 +122,25 @@ func post_metadata(c *gin.Context) {
 		c.YAML(http.StatusBadRequest, gin.H{"UserError": err.Error()})
 		return
 	}
-	metadata_list = append(metadata_list, new_metadata)
+	raw_metadata, err := yaml.Marshal(new_metadata)
+	if err != nil {
+		c.YAML(http.StatusInternalServerError, gin.H{"InternalServerError": err.Error()})
+		return
+	}
+	db.Set(new_metadata.Title+new_metadata.Version, raw_metadata)
 	c.YAML(http.StatusOK, new_metadata)
 }
 
 func setupServer() *gin.Engine {
 	router := gin.Default()
+	db = persister.NewPersister()
+	for _, metadata := range metadata_list {
+		raw_metadata, err := yaml.Marshal(metadata)
+		if err != nil {
+			panic(err)
+		}
+		db.Set(metadata.Title+metadata.Version, raw_metadata)
+	}
 	router.GET("/v1/metadata", get_metadata)
 	router.POST("/v1/metadata", post_metadata)
 
