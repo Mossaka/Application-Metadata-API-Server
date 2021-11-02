@@ -1,10 +1,16 @@
 package persister
 
-import "sync"
+import (
+	"errors"
+	"fmt"
+	"strconv"
+	"sync"
+)
 
 type Persister struct {
 	mu       sync.Mutex
 	metadata map[string][]byte
+	id       int64
 }
 
 func NewPersister() *Persister {
@@ -19,10 +25,21 @@ func (p *Persister) Set(key string, value []byte) {
 	p.metadata[key] = value
 }
 
-func (p *Persister) Get(key string) []byte {
+func (p *Persister) Add(value []byte) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.metadata[key]
+
+	p.metadata[strconv.FormatInt(p.id, 10)] = value
+	p.id++
+}
+
+func (p *Persister) Get(key string) ([]byte, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if m, exists := p.metadata[key]; exists {
+		return m, nil
+	}
+	return nil, errors.New(fmt.Sprintf("Key %s not found", key))
 }
 
 func (p *Persister) Delete(key string) {

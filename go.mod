@@ -8,6 +8,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 )
 
+require github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect

@@ -1,17 +1,14 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/Mossaka/Application-Metadata-API-Server/models"
 	"github.com/Mossaka/Application-Metadata-API-Server/persister"
 	"gopkg.in/yaml.v3"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator"
 )
 
-var db *persister.Persister
+var DB *persister.Persister
 
 var metadata_list = []models.Metadata{
 	{
@@ -50,99 +47,21 @@ var metadata_list = []models.Metadata{
 	},
 }
 
-func get_metadata(c *gin.Context) {
-	title := c.Query("title")
-	version := c.Query("version")
-	company := c.Query("company")
-	website := c.Query("website")
-	source := c.Query("source")
-	license := c.Query("license")
-	maintainer_name := c.Query("maintainer_name")
-	maintainer_email := c.Query("maintainer_email")
-
-	var metadata_list_filtered []models.Metadata
-	all_metadata := db.GetAll()
-	for _, raw_metadata := range all_metadata {
-		var metadata models.Metadata
-		err := yaml.Unmarshal(raw_metadata, &metadata)
-		if err != nil {
-			c.YAML(http.StatusInternalServerError, gin.H{"InternalServerError": err.Error()})
-			return
-		}
-		if title != "" && metadata.Title != title {
-			continue
-		}
-		if version != "" && metadata.Version != version {
-			continue
-		}
-		if company != "" && metadata.Company != company {
-			continue
-		}
-		if website != "" && metadata.Website != website {
-			continue
-		}
-		if source != "" && metadata.Source != source {
-			continue
-		}
-		if license != "" && metadata.License != license {
-			continue
-		}
-		found_name := false
-		found_email := false
-		for _, maintainer := range metadata.Maintainers {
-			if maintainer_name != "" && maintainer.Name == maintainer_name {
-				found_name = true
-			}
-			if maintainer_email != "" && maintainer.Email == maintainer_email {
-				found_email = true
-			}
-			if found_name && found_email {
-				break
-			}
-		}
-		if maintainer_name != "" && !found_name {
-			continue
-		}
-		if maintainer_email != "" && !found_email {
-			continue
-		}
-		metadata_list_filtered = append(metadata_list_filtered, metadata)
-	}
-	c.YAML(http.StatusOK, metadata_list_filtered)
-}
-
-func post_metadata(c *gin.Context) {
-	var new_metadata models.Metadata
-	if err := c.BindYAML(&new_metadata); err != nil {
-		c.YAML(http.StatusBadRequest, gin.H{"UserError": err.Error()})
-		return
-	}
-	validate := validator.New()
-	if err := validate.Struct(&new_metadata); err != nil {
-		c.YAML(http.StatusBadRequest, gin.H{"UserError": err.Error()})
-		return
-	}
-	raw_metadata, err := yaml.Marshal(new_metadata)
-	if err != nil {
-		c.YAML(http.StatusInternalServerError, gin.H{"InternalServerError": err.Error()})
-		return
-	}
-	db.Set(new_metadata.Title+new_metadata.Version, raw_metadata)
-	c.YAML(http.StatusOK, new_metadata)
-}
-
 func setupServer() *gin.Engine {
 	router := gin.Default()
-	db = persister.NewPersister()
+	DB = persister.NewPersister()
 	for _, metadata := range metadata_list {
 		raw_metadata, err := yaml.Marshal(metadata)
 		if err != nil {
 			panic(err)
 		}
-		db.Set(metadata.Title+metadata.Version, raw_metadata)
+		DB.Add(raw_metadata)
 	}
-	router.GET("/v1/metadata", get_metadata)
+	router.GET("/v1/metadata", list_metadata)
+	router.GET("/v1/metadata/:id", get_metadata)
 	router.POST("/v1/metadata", post_metadata)
+	router.PUT("/v1/metadata/:id", put_metadata)
+	router.DELETE("/v1/metadata/:id", delete_metadata)
 
 	return router
 }

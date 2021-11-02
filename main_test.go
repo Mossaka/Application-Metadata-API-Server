@@ -5,12 +5,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/Mossaka/Application-Metadata-API-Server/models"
 	"github.com/stretchr/testify/assert"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -32,15 +34,15 @@ func TestGetMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m := []models.Metadata{}
+	m := []MetadataPreview{}
 	err = yaml.Unmarshal([]byte(b), &m)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	assert.Equal(t, len(m), 2)
-	assert.Equal(t, m[0].Maintainers[0].Name, "AppTwo Maintainer")
-	assert.Equal(t, m[1].Maintainers[0].Name, "firstmaintainer app1")
+	assert.Equal(t, m[0].Metadata.Maintainers[0].Name, "AppTwo Maintainer")
+	assert.Equal(t, m[1].Metadata.Maintainers[0].Name, "firstmaintainer app1")
 }
 
 func TestGetMetadataFilter(t *testing.T) {
@@ -49,7 +51,7 @@ func TestGetMetadataFilter(t *testing.T) {
 
 	urls := []string{"/v1/metadata?title=Valid%20App%202", "/v1/metadata?maintainer_email=secondmaintainer%40gmail.com"}
 
-	for _, url := range urls {
+	for i, url := range urls {
 		resp, err := http.Get(ts.URL + url)
 		if err != nil {
 			t.Fatal(err)
@@ -64,20 +66,20 @@ func TestGetMetadataFilter(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		m := []models.Metadata{}
+		m := []MetadataPreview{}
 		err = yaml.Unmarshal([]byte(b), &m)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		assert.Equal(t, len(m), 1)
-		raw_metadata := db.GetAll()[m[0].Title+m[0].Version]
+		raw_metadata := DB.GetAll()[strconv.FormatInt(int64(i), 10)]
 		var metadata models.Metadata
 		err = yaml.Unmarshal([]byte(raw_metadata), &metadata)
 		if err != nil {
 			t.Fatal(err)
 		}
-		assert.Equal(t, m[0], metadata)
+		assert.Equal(t, m[0].Metadata, metadata)
 	}
 }
 
@@ -107,8 +109,8 @@ license: MIT`
 		t.Errorf("Status code is not 200. Status code: %d", resp.StatusCode)
 	}
 
-	assert.Equal(t, len(db.GetAll()), 3)
-	raw_metadata := db.GetAll()["Test App1.0.0"]
+	assert.Equal(t, len(DB.GetAll()), 3)
+	raw_metadata := DB.GetAll()["2"]
 	var metadata models.Metadata
 	err = yaml.Unmarshal([]byte(raw_metadata), &metadata)
 	if err != nil {
@@ -213,5 +215,5 @@ license: MIT`, i)
 		}(&wg, i)
 	}
 	wg.Wait()
-	assert.Equal(t, len(db.GetAll()), 12)
+	assert.Equal(t, len(DB.GetAll()), 12)
 }
